@@ -114,6 +114,31 @@ Recorded before any model result exists, so measurement choices cannot chase out
 6. **Objective documentation.** Negative results, dead ends, and deviations from expectation
    are logged here as findings, not smoothed over.
 
+## 2026-09-10 — Audit results (Phase A observation)
+Dev pool 100% structurally clean: 498 run files, 83 subjects, 0 violations; 3,756 left vs
+3,714 right trials (50.3/49.7). Excluded-subject defects reproduced independently for 5 of 6:
+S088/S092/S100 recorded at 128 Hz with 5.125 s trials (wrong paradigm timing throughout),
+S089 run 3 structurally deviant (181 s, 22 rest periods), S104 run 8 truncated (106 s,
+13 trials, 3.94 s durations). **S038 passed every structural check** — its documented defect
+is not visible in headers or annotations. Decision: keep it excluded; the defect may be
+semantic (wrong label assignments, invisible to structural checks — S089's other five runs
+also look clean, and its known defect IS semantic). Reported as an audit finding.
+
+## 2026-09-10 — Rejection threshold miscalibration (found and fixed)
+First pass rejected **75% of epochs** (161/249 files lost everything). Diagnosis: 100 µV was
+calibrated to single-channel amplitude, but the rejection statistic is the MAX over 64
+channels — on band-passed dev data that statistic's median is 185 µV (p99 = 877 µV); in-band
+alpha/beta bursts at any single electrode cross 100 µV routinely. Same diagnostics exposed
+extreme subject heterogeneity (file-median p2p from 25 µV to 1,755 µV) and persistent
+electrode faults (S109's C4 above threshold in 5/6 runs; one screaming channel on S079).
+**Fix, from artifact statistics only (no decoding result existed yet):** two-level cleaning —
+(1) repair: a channel that alone would reject >50% of a file's epochs, or is flat, is an
+electrode fault → interpolated from neighbors (MNE spherical splines); (2) reject: epochs
+whose remaining max-channel p2p exceeds a fixed 500 µV (≈ the 5% tail). This supersedes the
+earlier flat/10×-median QC flag rule — detection and repair are now one mechanism. Everything
+uses stock MNE operations (`interpolate_bads`, p2p rejection); the only custom logic is the
+6-line fault-detection rule. The with/without-rejection sensitivity check stays.
+
 ## Open items
 - Exemplar subject for single-subject figures (S001 provisional; revisit after audit).
 - Interpolation policy if per-channel QC flags anything (decide on observation).

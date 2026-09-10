@@ -43,7 +43,11 @@ INSPECT_BAND = (1.0, 40.0)               # inspection view for PSD/TFR figures o
 NOTCH_HZ = 60.0                          # US mains, applied to inspection view
 EPOCH_TMIN, EPOCH_TMAX = -1.0, 4.0       # stored epoch (pre-cue kept for ERD baseline viz)
 CROP = (0.5, 3.5)                        # analysis window: skip cue transient, stay in-trial
-REJECT_P2P = 100e-6                      # peak-to-peak reject on model view (sensitivity-checked)
+# Rejection revised 2026-09-10 from artifact statistics alone (never decoding results):
+# 100 µV suited a single channel, but the statistic is the MAX over 64 channels, whose
+# dev-pool median is 185 µV — it rejected 75% of epochs. See DECISIONS.md.
+REJECT_P2P = 500e-6                      # reject epoch if any channel p2p exceeds (≈5% tail)
+CH_FAULT_FRACTION = 0.5                  # channel alone rejecting >50% of a file → interpolate
 
 # ── Models / evaluation ──────────────────────────────────────────────────────
 N_CSP = 6                                # 3 filters per class

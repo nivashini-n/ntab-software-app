@@ -1,7 +1,8 @@
-"""Annotation audit — the scope says "check T1/T2 yourself", so we do, in code.
+"""Annotation audit — verify every label the models will train on.
 
-Why: every label the models train on is verified here first; the audit also
-re-confirms the documented defects behind the 6 excluded subjects.
+Dataset docs define T0=rest and, in L/R-fist runs, T1=left / T2=right. Codes are
+verified structurally here (counts, durations, rates); the semantic left/right
+mapping is confirmed physiologically later (lateralized ERD over C3/C4).
 """
 
 from __future__ import annotations
@@ -9,23 +10,42 @@ from __future__ import annotations
 import mne
 import pandas as pd
 
-# ── Per-run audit ────────────────────────────────────────────────────────────
-def audit_run(raw: mne.io.Raw, subject: int, run: int) -> pd.DataFrame:
-    """One row per annotation: onset, duration, code — plus run metadata.
+from . import config, data
 
-    TODO(Phase A): extract raw.annotations into a tidy frame.
-    """
-    raise NotImplementedError
+# ── Documented run structure (what we verify against) ────────────────────────
+EXPECT = {"sfreq": 160.0, "n_ch": 64, "n_task": 15, "task_dur": (3.9, 4.4)}
 
 
-def audit_subjects(subjects: list[int], runs: tuple[int, ...]) -> pd.DataFrame:
-    """Full audit table: event counts/durations/class balance per subject × run.
+# ── Audit ────────────────────────────────────────────────────────────────────
+def audit_run(subject: int, run: int, *, unlock_holdout: bool = False) -> dict:
+    """Header + annotation summary for one run file (no preload — fast)."""
+    config.assert_not_holdout([subject], unlock_holdout=unlock_holdout)
+    raw = mne.io.read_raw_edf(data.edf_path(subject, run), preload=False, verbose="ERROR")
+    ann, row = raw.annotations, {
+        "subject": subject, "run": run,
+        "sfreq": raw.info["sfreq"], "n_ch": len(raw.ch_names), "dur_s": round(float(raw.times[-1]), 1),
+    }
+    for code in ("T0", "T1", "T2"):
+        m = ann.description == code
+        row[f"n_{code}"] = int(m.sum())
+        row[f"dur_{code}"] = round(float(ann.duration[m].mean()), 3) if m.any() else float("nan")
+    return row
 
-    Checks (Phase A):
-      1. Only T0/T1/T2 codes appear; counts per run ≈ 15 task trials (~7–8/class).
-      2. Task durations ≈ 4.1–4.2 s; flag deviants (catches the S088/S092/S100 defects).
-      3. Class balance per run → justifies also reporting balanced accuracy.
-      4. Sampling rate == 160 Hz everywhere (catches S088's 128 Hz).
-    TODO(Phase A): implement + write results/audit.csv and a summary print.
-    """
-    raise NotImplementedError
+
+def audit_subjects(subjects, runs, *, unlock_holdout: bool = False) -> pd.DataFrame:
+    """One audit row per subject × run."""
+    rows = [audit_run(s, r, unlock_holdout=unlock_holdout) for s in subjects for r in runs]
+    return pd.DataFrame(rows)
+
+
+def check(df: pd.DataFrame) -> pd.DataFrame:
+    """Return rows violating the documented structure (empty = clean)."""
+    lo, hi = EXPECT["task_dur"]
+    bad = (
+        (df.sfreq != EXPECT["sfreq"])
+        | (df.n_ch != EXPECT["n_ch"])
+        | (df.n_T1 + df.n_T2 != EXPECT["n_task"])
+        | df.dur_T1.lt(lo) | df.dur_T1.gt(hi)
+        | df.dur_T2.lt(lo) | df.dur_T2.gt(hi)
+    )
+    return df[bad]
