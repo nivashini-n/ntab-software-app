@@ -1,0 +1,12 @@
+# data & caches (raw EDFs stay out of git; figures/models ARE committed)
+data
+cache/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+
+# local working docs — never published
+CLAUDE.md
+STUDY.md
