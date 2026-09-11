@@ -52,7 +52,7 @@ CH_FAULT_FRACTION = 0.5                  # channel alone rejecting >50% of a fil
 # ── Models / evaluation ──────────────────────────────────────────────────────
 N_CSP = 6                                # 3 filters per class
 SEED = 26
-EXEMPLAR_SUBJECT = 1                     # trace/single-trial figures; revisit after Phase A audit
+EXEMPLAR_SUBJECT = 50                    # median rung-1 performer (64.4%) — chosen to avoid cherry-picking
 
 # ── Holdout guard ────────────────────────────────────────────────────────────
 def assert_not_holdout(subjects, *, unlock_holdout: bool = False) -> None:
