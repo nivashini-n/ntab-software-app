@@ -7,7 +7,9 @@ Options:
     --model    models/ts_logreg_cross_subject.joblib (default; trained on 83 dev subjects)
     --score    also compare predictions against the EDF's own T1/T2 annotations
     --recenter re-center the tangent-space reference on this file's unlabeled trials
-               (unsupervised adaptation; classifier weights unchanged)
+               (unsupervised adaptation; classifier weights unchanged). Note: a single
+               run has only ~15 trials, so this is a noisier reference than the
+               reported holdout evaluation, which re-centered on ~45 trials/subject.
     --json     write predictions to a JSON file as well
 
 Contract: accepts any left/right-fist run (R03/04/07/08/11/12) from any EEGMMIDB
