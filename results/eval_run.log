@@ -1,0 +1,69 @@
+[     5s] data: imagery (3615, 64, 481), executed (3608, 64, 481)
+[    17s] trial covariances precomputed (per-trial + stateless → fold-safe)
+[    21s] rung1 imagery  laterality: mean acc 0.564 (sd 0.107)
+[    60s] rung1 imagery  csp_lda   : mean acc 0.634 (sd 0.142)
+[   123s] rung1 imagery  ts_logreg : mean acc 0.659 (sd 0.146)
+[   126s] rung1 executed laterality: mean acc 0.541 (sd 0.101)
+[   166s] rung1 executed csp_lda   : mean acc 0.657 (sd 0.137)
+[   228s] rung1 executed ts_logreg : mean acc 0.668 (sd 0.119)
+[   228s] sanity gate: executed − imagery = +0.009 (expected > 0)
+[   347s] rung0 pooled-leaky (demo): acc 0.647
+[   368s] identity probe: subject-ID acc 1.000 (chance 0.012) vs class acc 0.689 (chance 0.5)
+[   368s] LOSO: tangent-space arms (83 folds, shared training fits) …
+[   660s]     LOSO(ts) 10 subjects done
+[   953s]     LOSO(ts) 20 subjects done
+[  1246s]     LOSO(ts) 30 subjects done
+[  1545s]     LOSO(ts) 40 subjects done
+[  1836s]     LOSO(ts) 50 subjects done
+[  2126s]     LOSO(ts) 60 subjects done
+[  2424s]     LOSO(ts) 70 subjects done
+[  2714s]     LOSO(ts) 80 subjects done
+[  2801s] LOSO: csp_lda …
+[  3126s]     LOSO(csp_lda) 10 subjects done
+[  3441s]     LOSO(csp_lda) 20 subjects done
+[  3751s]     LOSO(csp_lda) 30 subjects done
+[  4069s]     LOSO(csp_lda) 40 subjects done
+[  4380s]     LOSO(csp_lda) 50 subjects done
+[  4688s]     LOSO(csp_lda) 60 subjects done
+[  4990s]     LOSO(csp_lda) 70 subjects done
+[  5294s]     LOSO(csp_lda) 80 subjects done
+[  5391s] LOSO: laterality …
+[  5397s]     LOSO(laterality) 10 subjects done
+[  5400s]     LOSO(laterality) 20 subjects done
+[  5404s]     LOSO(laterality) 30 subjects done
+[  5407s]     LOSO(laterality) 40 subjects done
+[  5411s]     LOSO(laterality) 50 subjects done
+[  5414s]     LOSO(laterality) 60 subjects done
+[  5418s]     LOSO(laterality) 70 subjects done
+[  5421s]     LOSO(laterality) 80 subjects done
+[  5423s] 2-loso ts_logreg: mean acc 0.623 (sd 0.117)
+[  5423s] 2b-loso-recentered ts_logreg_recentered: mean acc 0.657 (sd 0.132)
+[  5423s] 2-loso csp_lda: mean acc 0.626 (sd 0.141)
+[  5423s] 2-loso laterality: mean acc 0.590 (sd 0.108)
+[  5423s] learning curve …
+[  5585s] learning curve: n=5:0.592  n=10:0.615  n=20:0.607  n=40:0.630  n=68:0.621
+[  5585s] permutation null (10 subjects × 100 shuffles) …
+[  6319s] permutation null: mean 0.473, p95 0.618
+[  6382s] transfer exec→imag: 0.658 (sd 0.121); imag→exec: 0.658 (sd 0.124)
+[  6382s] sensitivity: rebuilding imagery without epoch rejection …
+  … 20/83 subjects
+  … 40/83 subjects
+  … 60/83 subjects
+  … 80/83 subjects
+[  6516s] sensitivity: rung1 ts_logreg no-rejection 0.661 vs with-rejection 0.659
+[  6516s] ladder table written:
+              rung                model      acc       ci
+    0-pooled-leaky            ts_logreg 0.647026 0.015579
+  1-within-subject           laterality 0.564430 0.022946
+  1-within-subject              csp_lda 0.633732 0.030553
+  1-within-subject            ts_logreg 0.658632 0.031454
+            2-loso              csp_lda 0.625624 0.030379
+            2-loso           laterality 0.589620 0.023306
+            2-loso            ts_logreg 0.622929 0.025223
+2b-loso-recentered ts_logreg_recentered 0.657390 0.028403
+[  6552s] saved models/ts_logreg_cross_subject.joblib
+[  6552s] exemplar (median rung-1) subject: S050 acc 0.644
+[  6552s] figures: S5 ERD grand average (20 subjects, inspection view) …
+[  6567s] figures: t-SNE embedding of tangent vectors …
+[  6600s] figures: S6 …
+[  6638s] gallery: S5, S6, S7 written. DONE.

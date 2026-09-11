@@ -139,6 +139,43 @@ earlier flat/10×-median QC flag rule — detection and repair are now one mecha
 uses stock MNE operations (`interpolate_bads`, p2p rejection); the only custom logic is the
 6-line fault-detection rule. The with/without-rejection sensitivity check stays.
 
+## 2026-09-11 — Phase B results (development set, imagery unless noted)
+Ladder: pooled-leaky 64.7% · within-subject floor/CSP/TS = 56.4/63.4/65.9% · LOSO
+floor/CSP/TS = 59.0/62.6/62.3% · LOSO+re-centering 65.7%. Observations, in the order found:
+1. **Pre-registered surprise confirmed:** rung 0 (64.7%) < rung 1 (65.9%) — for linear models,
+   pooling 83 heterogeneous subjects costs more than subject leakage gains. The honest
+   inflation measure is same-protocol: pooled-leaky vs LOSO = +2.4pp.
+2. **Re-centering recovers ~94% of the cross-subject gap** (62.3 → 65.7 vs within 65.9):
+   most of the new-person penalty is a removable per-person covariance offset, not a
+   different neural pattern. Largest single finding.
+3. **Identity probe: 100.0% subject-ID vs 68.9% class** from identical features and an
+   identical run-grouped split (chance 1.2% vs 50%). The t-SNE shows the same thing
+   geometrically: 83 tight per-person islands, classes mixed within each.
+4. Executed ≈ imagery within-subject (66.8 vs 65.9%): if EMG drove decoding, executed would
+   dominate; it does not.
+5. **Transfer is lossless** both directions (65.8/65.8% vs 65.9% within-imagery reference):
+   executed and imagined movement share the spatial covariance signature.
+6. Learned-vs-memorized: train accuracy 94.0% vs LOSO 62.3% (+31.7pp gap — the model
+   memorizes training-subject identity structure), yet the learning curve rises with more
+   training subjects (59.2 → ~62–63%, saturating near 40) and transfer is lossless — so it
+   also learns population-level structure. The overfitting target is who, not which hand.
+7. Permutation null: mean 47.3%, p95 61.8% — machinery honest (shuffled labels ≈ chance);
+   a single subject needs >62% to be individually significant at n≈45.
+8. Sensitivity: epoch rejection on/off shifts rung 1 by 0.2pp (66.1 vs 65.9%) — after
+   band-pass + electrode repair, the 500 µV rejection is nearly inert. Reported as such.
+9. ERD grand average (83 subjects): clear sustained contralateral contrast at C3; weak at C4
+   — hemispheric asymmetry consistent with a right-hand-dominant population (handedness not
+   provided by the dataset).
+10. Oddity: S018 decodes significantly BELOW chance within-subject (31.1%, n=45, band edge
+    35.5%) — implies its class-conditional patterns invert across runs. Open question.
+11. Exemplar subject for single-subject figures: S050 (median rung-1 performer, 64.4%).
+
+## 2026-09-11 — Headline arm declared BEFORE the held-out test set unlock
+Per the pre-committed rule (dev-LOSO winner is the headline): **headline arm = tangent
+space + logistic regression + unsupervised re-centering** (65.7% dev LOSO). Secondary,
+clearly labeled: plain TS+LR (62.3%) and CSP+LDA (62.6%). The 20-subject held-out test
+evaluation (`scripts/04_final_holdout.py`) runs ONCE, after this declaration.
+
 ## Open items
 - Exemplar subject for single-subject figures (S001 provisional; revisit after audit).
 - Interpolation policy if per-channel QC flags anything (decide on observation).

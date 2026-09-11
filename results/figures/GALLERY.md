@@ -64,3 +64,52 @@ Regenerate: `uv run python scripts/05_figures.py`
 
 **S1 — Label audit.** Left: every L/R-fist run carries ~15 cued trials with a ~8/7 class split (the imbalance is why balanced accuracy is reported too). Middle: task segments take exactly two durations, 4.088 or 4.100 s — a BCI2000 timing artifact, uniform across the pool. Right: per-subject class totals lie on an anti-diagonal (left + right ≈ 90 fixed trials), with the split ranging only 42–48 — mild, bounded imbalance and no class-skewed subjects.
 
+
+**S5 — The physiological signal itself.** Grand-average (20 dev subjects, imagery runs) time-frequency power at the two motor electrodes, as fractional change from the pre-cue baseline. Blue = the rhythm quieting (ERD). The diagnostic is the diagonal: imagining LEFT suppresses power at C4 (right hemisphere) more than C3, and imagining RIGHT does the opposite — the contralateral organization the classifiers exploit. This is what 'the signal' looks like before any model touches it.
+
+### s5_covariances
+![s5_covariances](s5_covariances.png)
+
+**S5 — What the main model actually sees.** Each trial is summarized as a 64×64 covariance matrix: diagonal = per-channel band power, off-diagonal = channel co-fluctuation. Left/middle: class means (dev pool, imagery). Right: their difference — the class information lives in a structured, low-amplitude pattern around the sensorimotor rows (C3/C4 marked). The tangent-space model reads exactly this object; CSP is a supervised 6-dimensional compression of it.
+
+### s5_embedding
+![s5_embedding](s5_embedding.png)
+
+**S5 — Who dominates the representation.** One point = one trial: the same t-SNE projection of the tangent-space vectors, colored two ways. Left: by imagined hand — classes are thoroughly mixed at the global scale. Right: by person — trials cluster into tight per-subject islands. The representation encodes WHO is being recorded far more strongly than WHAT they imagined; this is the geometric reason pooled-leaky evaluation inflates and cross-subject decoding is hard.
+
+### s6_csp_patterns
+![s6_csp_patterns](s6_csp_patterns.png)
+
+**S6 — What the baseline model learned.** Forward-model patterns of the six CSP filters (fit on the dev pool, imagery). Patterns concentrating over the central sensorimotor region (around C3/C4) mean the filters read motor-cortex rhythms; patterns over eyes or temporal muscle would expose artifact decoding. This is the visual check that the decoder's evidence is physiological.
+
+
+**S6 — Where the main model puts its weight.** Heuristic saliency: total absolute logistic-regression weight on all covariance entries involving each channel (it aggregates a 2,080-dim linear readout to channel level, so it is indicative, not exact). Central concentration again argues for motor rhythms rather than artifacts as the evidence source.
+
+### s6_per_subject
+![s6_per_subject](s6_per_subject.png)
+
+**S6 — The person, not just the task.** Each count is one subject's accuracy for the SAME model under two exams: trained on that person's other runs (blue) vs trained only on other people (orange). The wide spread is real inter-person variability ('BCI illiteracy': some subjects sit inside the gray chance band under both exams); the blue→orange shift is the personalization gap. With ~45 trials per subject, individual bars carry ±≈15% binomial uncertainty — population statements are safe, per-subject rankings are not.
+
+### s7_ladder
+![s7_ladder](s7_ladder.png)
+
+**S7 — The number depends on the exam.** Identical models, increasingly honest evaluations. The pooled random split (leftmost) mixes each person's trials across train/test — its score is inflated by subject identity and is shown only as the cautionary 'first number you see'. Within-subject is the personalized-BCI setting; LOSO is a brand-new person; re-centering adapts only the embedding reference using the new person's unlabeled data. Error bars: binomial 95% CIs.
+
+
+**S7 — Do the two tasks share a representation?** Within each subject, a model trained only on REAL movements and tested on IMAGINED ones (and the reverse), against the within-imagery reference. Above-chance transfer means executed and imagined movement modulate overlapping spatial patterns — evidence the decoder reads motor physiology rather than condition-specific quirks. Bars: mean ± SD across subjects.
+
+### s5_erd
+![s5_erd](s5_erd.png)
+
+**S5 — The physiological signal itself.** Grand-average (83 dev subjects, imagery runs) time-frequency power at the two motor electrodes, as fractional change from the pre-cue baseline. Blue = the rhythm quieting (ERD). The diagnostic is the diagonal: imagining LEFT suppresses power at C4 (right hemisphere) more than C3, and imagining RIGHT does the opposite — the contralateral organization the classifiers exploit. This is what 'the signal' looks like before any model touches it. Third column: the left−right difference. At C3 the contrast is clear and sustained — more mu/beta suppression when imagining RIGHT, the contralateral prediction. At C4 the grand-average contrast is weak: a real hemispheric asymmetry (typical of right-hand-dominant populations; the dataset ships no handedness metadata), and one more reason per-subject variability is the story.
+
+### s6_readout_saliency
+![s6_readout_saliency](s6_readout_saliency.png)
+
+**S6 — Where the main model puts its weight.** Heuristic saliency: total absolute logistic-regression weight on all covariance entries involving each channel, z-scored (aggregating a 2,080-dim readout to channel level after tangent-space whitening is indicative only — the CSP patterns are the rigorous spatial evidence). Central concentration argues for motor rhythms over artifacts.
+
+### s7_transfer
+![s7_transfer](s7_transfer.png)
+
+**S7 — Do the two tasks share a representation?** Within each subject, a model trained only on REAL movements and tested on IMAGINED ones (and the reverse), against the within-imagery reference. Above-chance transfer means executed and imagined movement modulate overlapping spatial patterns — evidence the decoder reads motor physiology rather than condition-specific quirks. Bars: mean ± SD across subjects.
+

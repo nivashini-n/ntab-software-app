@@ -44,21 +44,27 @@ def channel_faults(epochs: mne.Epochs) -> list[str]:
             if fl or f > config.CH_FAULT_FRACTION]
 
 
-def repair_and_reject(epochs: mne.Epochs) -> tuple[mne.Epochs, np.ndarray, list[str]]:
-    """Interpolate persistent electrode faults, then drop burst epochs."""
+def repair_and_reject(epochs: mne.Epochs, *, reject: bool = True
+                      ) -> tuple[mne.Epochs, np.ndarray, list[str]]:
+    """Interpolate persistent electrode faults, then (optionally) drop burst epochs."""
     bads = channel_faults(epochs)
     if bads:
         epochs = epochs.copy()
         epochs.info["bads"] = bads
         epochs.interpolate_bads(verbose="ERROR")
-    kept, p2p = reject_epochs(epochs)
+    p2p = peak_to_peak(epochs)
+    kept = epochs[p2p <= config.REJECT_P2P] if reject else epochs
     return kept, p2p, bads
 
 
 # ── Epoching & rejection ─────────────────────────────────────────────────────
-def epochs_from_raw(raw: mne.io.Raw, run: int) -> mne.Epochs:
-    """Cue-locked epochs [-1, 4] s. Labels valid ONLY in L/R-fist runs."""
-    if run not in config.EXECUTED_RUNS + config.IMAGERY_RUNS:
+def epochs_from_raw(raw: mne.io.Raw, run: int | None) -> mne.Epochs:
+    """Cue-locked epochs [-1, 4] s. Labels valid ONLY in L/R-fist runs.
+
+    run=None (predict path, unknown filename): skip the whitelist and trust the
+    caller to have warned about T1/T2 semantics.
+    """
+    if run is not None and run not in config.EXECUTED_RUNS + config.IMAGERY_RUNS:
         raise ValueError(f"run {run}: T1/T2 do not mean left/right fist in this run")
     events, _ = mne.events_from_annotations(raw, event_id={"T1": 1, "T2": 2}, verbose="ERROR")
     return mne.Epochs(raw, events, event_id={"left": 1, "right": 2},
@@ -79,17 +85,19 @@ def reject_epochs(epochs: mne.Epochs) -> tuple[mne.Epochs, np.ndarray]:
 
 
 # ── Dataset assembly ─────────────────────────────────────────────────────────
-def build_dataset(subjects: list[int], runs: tuple[int, ...],
-                  *, unlock_holdout: bool = False, use_cache: bool = True) -> dict:
-    """Assemble {X, y, subject, run, meta} on the CROP window, rejection applied.
+def build_dataset(subjects: list[int], runs: tuple[int, ...], *, unlock_holdout: bool = False,
+                  use_cache: bool = True, reject: bool = True) -> dict:
+    """Assemble {X, y, subject, run, meta} on the CROP window.
 
     X: (n_trials, 64, n_times) float32; y: 0=left, 1=right. meta holds per-file
-    drop stats, pre-rejection p2p values, and channel-QC flags.
+    drop stats, pre-rejection p2p values, and repaired channels. reject=False
+    keeps electrode repair but skips epoch rejection (sensitivity check).
     """
     config.assert_not_holdout(subjects, unlock_holdout=unlock_holdout)
     tag = (f"r{'-'.join(map(str, runs))}_n{len(subjects)}"
            f"_b{config.BAND[0]:g}-{config.BAND[1]:g}_c{config.CROP[0]:g}-{config.CROP[1]:g}"
-           f"_rej{config.REJECT_P2P * 1e6:g}_rep{config.CH_FAULT_FRACTION:g}")
+           f"_rej{config.REJECT_P2P * 1e6:g}_rep{config.CH_FAULT_FRACTION:g}"
+           + ("" if reject else "_norej"))
     cache = config.CACHE_DIR / f"epochs_{tag}.joblib"
     if use_cache and cache.exists():
         return joblib.load(cache)
@@ -99,7 +107,7 @@ def build_dataset(subjects: list[int], runs: tuple[int, ...],
         for r in runs:
             mv = model_view(data.load_raw(s, r, unlock_holdout=unlock_holdout))
             ep = epochs_from_raw(mv, r).crop(*config.CROP)
-            kept, p2p, interp = repair_and_reject(ep)
+            kept, p2p, interp = repair_and_reject(ep, reject=reject)
             X.append(kept.get_data(copy=True).astype(np.float32))
             y.append(kept.events[:, 2] - 1)
             subj.append(np.full(len(kept), s))

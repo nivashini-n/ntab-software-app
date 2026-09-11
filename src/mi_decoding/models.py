@@ -1,51 +1,63 @@
-"""The two decoders + the floor baseline, as leakage-safe sklearn Pipelines.
+"""The benchmark arms, as leakage-safe sklearn Pipelines.
 
-Why Pipelines: CSP filters, covariance means, and scalers are all FIT statistics —
-wrapping them guarantees they are learned inside CV folds only.
+Why Pipelines: CSP filters, tangent-space reference means, and classifier weights
+are all FIT statistics — wrapping them guarantees they are learned inside CV
+folds only. All arms end in linear classifiers on purpose: their evidence can be
+drawn on a scalp map and checked against motor physiology (C3/C4).
 """
 
 from __future__ import annotations
 
+import numpy as np
+from mne.decoding import CSP
+from pyriemann.tangentspace import TangentSpace
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 
 from . import config
+from .features import laterality_features, trial_covariances
 
-# ── Decoders ─────────────────────────────────────────────────────────────────
+# ── Arm 1: physiological floor ───────────────────────────────────────────────
+def make_laterality(ch_names: list[str]) -> Pipeline:
+    """C3/C4 log band-power → logistic regression. Two features, one line of logic."""
+    feat = FunctionTransformer(laterality_features, kw_args={"ch_names": list(ch_names)})
+    return Pipeline([("lat", feat),
+                     ("clf", LogisticRegression(max_iter=1000, random_state=config.SEED))])
+
+
+# ── Arm 2: canonical baseline ────────────────────────────────────────────────
 def make_csp_lda() -> Pipeline:
-    """Baseline: CSP(6) → log-variance → shrinkage LDA.
+    """CSP(6, log-variance) → shrinkage LDA.
 
-    Explainability hook: fitted CSP patterns plot as scalp maps that must
-    localize over contralateral motor cortex (C3/C4) — else we decode artifact.
-    TODO(Phase B): mne.decoding.CSP(n_components=config.N_CSP, log=True)
-                   → LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto").
+    CSP solves a generalized eigenproblem on the two class covariances: spatial
+    filters whose output power is maximal for one class, minimal for the other.
+    Its patterns_ plot as scalp maps — the built-in artifact lie-detector.
     """
-    raise NotImplementedError
+    return Pipeline([("csp", CSP(n_components=config.N_CSP, reg="ledoit_wolf", log=True)),
+                     ("lda", LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto"))])
 
 
+# ── Arms 3 & 4: Riemannian main model (+ unsupervised re-centering) ──────────
 def make_ts_logreg() -> Pipeline:
-    """Main: LW covariance → Riemannian tangent space → L2 logistic regression.
+    """Ledoit-Wolf covariance → tangent space at the training Riemannian mean →
+    L2 logistic regression: a linear probe on a fixed geometric embedding."""
+    return Pipeline([("cov", FunctionTransformer(trial_covariances)),
+                     ("ts", TangentSpace(metric="riemann")),
+                     ("clf", LogisticRegression(max_iter=2000, random_state=config.SEED))])
 
-    A linear probe on a geometry-respecting latent embedding; tangent projection
-    re-centers each fit at its own Riemannian mean (helps cross-subject shift).
-    TODO(Phase B): pyriemann Covariances("lwf") → TangentSpace() → LogisticRegression.
+
+def fit_predict_recentered(covs_tr, y_tr, covs_te) -> np.ndarray:
+    """Arm 4: train at the TRAIN mean, project test at the TEST subject's own mean
+    (estimated from their UNLABELED covariances); classifier weights stay frozen.
+
+    Not fine-tuning — no label-driven updates. It removes the per-person
+    covariance offset, like batch-effect correction. Transductive in the
+    unlabeled sense only (a real system would use a calibration recording).
     """
-    raise NotImplementedError
-
-
-def make_laterality_baseline() -> Pipeline:
-    """Floor: C3/C4 mu log-power → logistic regression (rung 6).
-
-    TODO(Phase B).
-    """
-    raise NotImplementedError
-
-
-def recenter_for_subject(fitted_ts_pipeline: Pipeline, X_new_covs) -> Pipeline:
-    """Unsupervised adaptation: refit ONLY the tangent-space reference mean on the
-    new subject's unlabeled covariances; classifier weights stay frozen.
-
-    NOT fine-tuning (no pretrained weights, no label-driven updates) — a
-    recentering of the embedding, analogous to per-site batch correction.
-    TODO(Phase B): clone pipeline, refit TangentSpace reference, keep classifier.
-    """
-    raise NotImplementedError
+    ts_tr = TangentSpace(metric="riemann").fit(covs_tr)
+    clf = LogisticRegression(max_iter=2000, random_state=config.SEED)
+    clf.fit(ts_tr.transform(covs_tr), y_tr)
+    ts_te = TangentSpace(metric="riemann").fit(covs_te)   # unlabeled re-centering
+    return clf.predict(ts_te.transform(covs_te))

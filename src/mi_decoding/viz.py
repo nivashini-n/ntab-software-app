@@ -242,16 +242,200 @@ def fig_s4_rejection(meta):
              f"sensitivity check accompanies the model results.")
 
 
-def fig_s5_model_input(epochs_by_class, covs, y, tangent_xy=None):
-    """ERD/ERS TFR at C3 vs C4; class-mean covariances + diff; tangent t-SNE. TODO(Phase B)."""
-    raise NotImplementedError
+def fig_s5_erd(ep_left, ep_right, n_subj: int):
+    """Grand-average ERD maps: time-frequency power change at C3 and C4, per class."""
+    import numpy as np
+    tfrs = {}
+    freqs = np.arange(6, 31, 1.0)
+    for cls, ep in (("left", ep_left), ("right", ep_right)):
+        tfr = ep.compute_tfr("morlet", freqs=freqs, n_cycles=freqs / 2.0,
+                             average=True, decim=2, verbose="ERROR")
+        tfr.apply_baseline((-0.9, -0.1), mode="percent", verbose="ERROR")
+        tfrs[cls] = tfr
+    fig, axes = plt.subplots(2, 3, figsize=(13.5, 6), sharex=True, sharey=True)
+    vmax = 0.6
+    for i, ch in enumerate(("C3", "C4")):
+        cols = [("left", tfrs["left"].get_data(picks=[ch])[0]),
+                ("right", tfrs["right"].get_data(picks=[ch])[0])]
+        cols.append(("left − right", cols[0][1] - cols[1][1]))
+        for j, (name, d) in enumerate(cols):
+            v = vmax if j < 2 else 0.35
+            im = axes[i, j].imshow(d, aspect="auto", origin="lower", cmap="RdBu_r",
+                                   vmin=-v, vmax=v,
+                                   extent=[tfrs["left"].times[0], tfrs["left"].times[-1], 6, 30])
+            axes[i, j].axvline(0, color="k", lw=0.8)
+            c = CLASS_COLORS.get(name, "#333")
+            axes[i, j].set_title(f"{ch} — {'imagine ' + name if j < 2 else name}",
+                                 color=c, fontsize=10)
+    for ax in axes[1]: ax.set_xlabel("time from cue (s)")
+    for ax in axes[:, 0]: ax.set_ylabel("frequency (Hz)")
+    fig.colorbar(im, ax=axes, label="power change vs pre-cue (fraction)", fraction=0.03)
+    save_fig(fig, "s5_erd",
+             f"**S5 — The physiological signal itself.** Grand-average ({n_subj} dev subjects, "
+             "imagery runs) time-frequency power at the two motor electrodes, as fractional "
+             "change from the pre-cue baseline. Blue = the rhythm quieting (ERD). The "
+             "diagnostic is the diagonal: imagining LEFT suppresses power at C4 (right "
+             "hemisphere) more than C3, and imagining RIGHT does the opposite — the "
+             "contralateral organization the classifiers exploit. This is what \'the signal\' "
+             "looks like before any model touches it. Third column: the left−right difference. "
+             "At C3 the contrast is clear and sustained — more mu/beta suppression when imagining "
+             "RIGHT, the contralateral prediction. At C4 the grand-average contrast is weak: a real "
+             "hemispheric asymmetry (typical of right-hand-dominant populations; the dataset ships "
+             "no handedness metadata), and one more reason per-subject variability is the story.")
 
 
-def fig_s6_model_learned(csp, lda, info, per_subject_acc):
-    """CSP pattern topomaps; readout weights at channel level; accuracy distribution. TODO(Phase B)."""
-    raise NotImplementedError
+def fig_s5_covariances(covs, y, ch_names):
+    """Class-mean spatial covariance matrices and their difference."""
+    import numpy as np
+    mu = {c: covs[y == i].mean(0) * 1e12 for i, c in enumerate(("left", "right"))}
+    diff = mu["left"] - mu["right"]
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8))
+    ticks = [ch_names.index("C3"), ch_names.index("C4")]
+    vmax = np.percentile(np.abs(list(mu.values())), 99)
+    for ax, (name, m, v, cm) in zip(axes, (("mean cov — left", mu["left"], vmax, "viridis"),
+                                           ("mean cov — right", mu["right"], vmax, "viridis"),
+                                           ("difference (L − R)", diff, np.abs(diff).max(), "RdBu_r"))):
+        im = ax.imshow(m, cmap=cm, vmin=(-v if cm == "RdBu_r" else 0), vmax=v)
+        ax.set_xticks(ticks, ["C3", "C4"]); ax.set_yticks(ticks, ["C3", "C4"])
+        ax.set_title(name, fontsize=10)
+        fig.colorbar(im, ax=ax, fraction=0.046, label="µV²")
+    save_fig(fig, "s5_covariances",
+             "**S5 — What the main model actually sees.** Each trial is summarized as a 64×64 "
+             "covariance matrix: diagonal = per-channel band power, off-diagonal = channel "
+             "co-fluctuation. Left/middle: class means (dev pool, imagery). Right: their "
+             "difference — the class information lives in a structured, low-amplitude pattern "
+             "around the sensorimotor rows (C3/C4 marked). The tangent-space model reads "
+             "exactly this object; CSP is a supervised 6-dimensional compression of it.")
 
 
-def fig_s7_evaluation(ladder: "pd.DataFrame", transfer: "pd.DataFrame"):
-    """The ladder-collapse chart (rungs 0→3) + transfer bars. TODO(Phase B)."""
-    raise NotImplementedError
+def fig_s5_embedding(xy, y, subjects):
+    """The same 2-D t-SNE of tangent vectors, colored two ways: class vs subject."""
+    import numpy as np
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    for i, cls in enumerate(("left", "right")):
+        m = y == i
+        axes[0].scatter(*xy[m].T, s=3, alpha=0.5, color=CLASS_COLORS[cls], label=cls, lw=0)
+    axes[0].legend(frameon=False, markerscale=4)
+    axes[0].set_title("colored by CLASS (what we want)")
+    cmap = plt.get_cmap("hsv")
+    subj_u = np.unique(subjects)
+    for k, s in enumerate(subj_u):
+        m = subjects == s
+        axes[1].scatter(*xy[m].T, s=3, alpha=0.6, color=cmap(k / len(subj_u)), lw=0)
+    axes[1].set_title(f"colored by SUBJECT ({len(subj_u)} people)")
+    for ax in axes: ax.set_xticks([]); ax.set_yticks([])
+    save_fig(fig, "s5_embedding",
+             "**S5 — Who dominates the representation.** One point = one trial: the same t-SNE "
+             "projection of the tangent-space vectors, colored two ways. Left: by imagined "
+             "hand — classes are thoroughly mixed at the global scale. Right: by person — "
+             "trials cluster into tight per-subject islands. The representation encodes WHO is "
+             "being recorded far more strongly than WHAT they imagined; this is the geometric "
+             "reason pooled-leaky evaluation inflates and cross-subject decoding is hard.")
+
+
+def fig_s6_csp_patterns(csp, info):
+    """The six CSP spatial patterns as scalp maps — the artifact lie-detector."""
+    import mne
+    fig, axes = plt.subplots(1, 6, figsize=(13, 2.6))
+    for i, ax in enumerate(axes):
+        mne.viz.plot_topomap(csp.patterns_[i], info, axes=ax, show=False, contours=4)
+        ax.set_title(f"CSP {i + 1}", fontsize=9)
+    save_fig(fig, "s6_csp_patterns",
+             "**S6 — What the baseline model learned.** Forward-model patterns of the six CSP "
+             "filters (fit on the dev pool, imagery). Patterns concentrating over the central "
+             "sensorimotor region (around C3/C4) mean the filters read motor-cortex rhythms; "
+             "patterns over eyes or temporal muscle would expose artifact decoding. This is "
+             "the visual check that the decoder\'s evidence is physiological.")
+
+
+def fig_s6_readout(w_ch, info):
+    """Aggregate |weight| per channel of the tangent-space logistic readout (z-scored)."""
+    import mne
+    import numpy as np
+    z = (w_ch - w_ch.mean()) / w_ch.std()
+    fig, ax = plt.subplots(figsize=(4.2, 3.6))
+    mne.viz.plot_topomap(z, info, axes=ax, show=False, contours=4, cmap="Reds",
+                         vlim=(z.min(), z.max()))
+    ax.set_title("tangent readout — channel saliency (z)", fontsize=10)
+    save_fig(fig, "s6_readout_saliency",
+             "**S6 — Where the main model puts its weight.** Heuristic saliency: total "
+             "absolute logistic-regression weight on all covariance entries involving each "
+             "channel, z-scored (aggregating a 2,080-dim readout to channel level after "
+             "tangent-space whitening is indicative only — the CSP patterns are the rigorous "
+             "spatial evidence). Central concentration argues for motor rhythms over artifacts.")
+
+
+def fig_s6_per_subject(df_r1, df_r2, chance_band):
+    """Per-subject accuracy distributions: personalized vs new-person."""
+    import numpy as np
+    fig, ax = plt.subplots(figsize=(8.5, 4))
+    bins = np.linspace(0.3, 1.0, 29)
+    ax.hist(df_r1.acc, bins=bins, alpha=0.65, color="#4C72B0",
+            label=f"within-subject (rung 1), mean {df_r1.acc.mean():.2f}")
+    ax.hist(df_r2.acc, bins=bins, alpha=0.65, color="#DD8452",
+            label=f"new person / LOSO (rung 2), mean {df_r2.acc.mean():.2f}")
+    ax.axvspan(*chance_band, color="gray", alpha=0.25, label="chance 95% band")
+    ax.set(xlabel="accuracy (tangent-space model, imagery)", ylabel="subjects")
+    ax.legend(frameon=False, fontsize=9)
+    save_fig(fig, "s6_per_subject",
+             "**S6 — The person, not just the task.** Each count is one subject\'s accuracy "
+             "for the SAME model under two exams: trained on that person\'s other runs (blue) "
+             "vs trained only on other people (orange). The wide spread is real inter-person "
+             "variability (\'BCI illiteracy\': some subjects sit inside the gray chance band "
+             "under both exams); the blue→orange shift is the personalization gap. With ~45 "
+             "trials per subject, individual bars carry ±≈15% binomial uncertainty — "
+             "population statements are safe, per-subject rankings are not.")
+
+
+def fig_s7_ladder(summary):
+    """The evaluation story in one chart: same models, increasingly honest exams."""
+    import numpy as np
+    order = [r for r in ("0-pooled-leaky", "1-within-subject", "2-loso", "2b-loso-recentered")
+             if r in summary.rung.unique()]
+    m_order = [m for m in ("laterality", "csp_lda", "ts_logreg", "ts_logreg_recentered")
+               if m in summary.model.unique()]
+    colors = {"laterality": "#999999", "csp_lda": "#55A868",
+              "ts_logreg": "#4C72B0", "ts_logreg_recentered": "#8172B3"}
+    fig, ax = plt.subplots(figsize=(9.5, 4.2))
+    w = 0.8 / max(len(m_order), 1)
+    for k, mod in enumerate(m_order):
+        sub = summary[summary.model == mod].set_index("rung").reindex(order)
+        xs = np.arange(len(order)) + (k - (len(m_order) - 1) / 2) * w
+        ax.bar(xs, sub.acc, width=w * 0.95, color=colors[mod], label=mod)
+        if "ci" in sub:
+            ax.errorbar(xs, sub.acc, yerr=sub.ci, fmt="none", ecolor="k", lw=0.8, capsize=2)
+    ax.axhline(0.5, color="k", ls=":", lw=0.9)
+    ax.text(len(order) - 0.52, 0.505, "chance", fontsize=8)
+    ax.set_xticks(range(len(order)),
+                  ["pooled\n(leaky demo)", "within-\nsubject", "new person\n(LOSO)",
+                   "LOSO +\nre-centering"][: len(order)])
+    ax.set(ylabel="accuracy (imagery)", ylim=(0.4, 1.0))
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    save_fig(fig, "s7_ladder",
+             "**S7 — The number depends on the exam.** Identical models, increasingly honest "
+             "evaluations. The pooled random split (leftmost) mixes each person\'s trials "
+             "across train/test — its score is inflated by subject identity and is shown only "
+             "as the cautionary \'first number you see\'. Within-subject is the personalized-"
+             "BCI setting; LOSO is a brand-new person; re-centering adapts only the embedding "
+             "reference using the new person\'s unlabeled data. Error bars: binomial 95% CIs.")
+
+
+def fig_s7_transfer(df_ei, df_ie, within_mean, within_sd=0.0):
+    """Executed↔imagery transfer vs the within-condition reference."""
+    import numpy as np
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    vals = [df_ei.acc.mean(), df_ie.acc.mean(), within_mean]
+    sds = [df_ei.acc.std(), df_ie.acc.std(), within_sd]
+    ax.bar(range(3), vals, yerr=sds, capsize=4,
+           color=["#4C72B0", "#55A868", "#bbbbbb"], width=0.6)
+    ax.axhline(0.5, color="k", ls=":", lw=0.9)
+    ax.set_xticks(range(3), ["train executed\n→ test imagery",
+                             "train imagery\n→ test executed", "within-imagery\n(reference)"])
+    ax.set(ylabel="accuracy", ylim=(0.4, 1.0))
+    save_fig(fig, "s7_transfer",
+             "**S7 — Do the two tasks share a representation?** Within each subject, a model "
+             "trained only on REAL movements and tested on IMAGINED ones (and the reverse), "
+             "against the within-imagery reference. Above-chance transfer means executed and "
+             "imagined movement modulate overlapping spatial patterns — evidence the decoder "
+             "reads motor physiology rather than condition-specific quirks. Bars: mean ± SD "
+             "across subjects.")
