@@ -176,6 +176,22 @@ space + logistic regression + unsupervised re-centering** (65.7% dev LOSO). Seco
 clearly labeled: plain TS+LR (62.3%) and CSP+LDA (62.6%). The 20-subject held-out test
 evaluation (`scripts/04_final_holdout.py`) runs ONCE, after this declaration.
 
+## 2026-09-11 — Held-out test set results (single shot, FINAL)
+20 subjects, 884 imagery trials, evaluated once as pre-committed:
+- **HEADLINE — TS+LR + re-centering: 61.7% pooled ± 3.2 (95% CI), mean-over-subjects 61.7% (sd 13.3)**
+- secondary — TS+LR (no adaptation): 55.7% ± 3.3
+- secondary — CSP+LDA: 54.9% ± 3.3
+
+Two observations. (1) The headline arm degraded gracefully from dev LOSO (65.7 → 61.7,
+−4.0pp — about 1.3 standard errors given 20-subject sampling of a population with ~13pp
+between-subject sd; CIs overlap). (2) **The non-adapted arms dropped much harder**
+(TS −6.6pp to 55.7; CSP −7.7pp to 54.9), landing near the floor's dev performance. Reading:
+a fixed cross-subject model is fragile to which people you happen to test on; unsupervised
+re-centering absorbs much of that fragility. This is the strongest evidence in the project
+for the adaptation arm — and an honest illustration of the scope's warning that the defended
+figure sits well below the first figure you see (64.7% leaky → 61.7% defended, adapted;
+55.7% unadapted).
+
 ## Open items
 - Exemplar subject for single-subject figures (S001 provisional; revisit after audit).
 - Interpolation policy if per-channel QC flags anything (decide on observation).
