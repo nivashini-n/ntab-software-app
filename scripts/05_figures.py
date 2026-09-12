@@ -24,6 +24,9 @@ from mi_decoding import config, data, evaluate, models, preprocess, viz
 from mi_decoding.features import trial_covariances
 
 say = lambda m: print(m, flush=True)
+gallery = config.FIGURES_DIR / "GALLERY.md"
+if gallery.exists():
+    gallery.unlink()                     # rebuild the index from scratch, in stage order
 
 # ── Shared inputs ─────────────────────────────────────────────────────────────
 im = preprocess.build_dataset(list(config.DEV), config.IMAGERY_RUNS)
@@ -41,15 +44,12 @@ raw = data.load_raw(s, config.IMAGERY_RUNS[0])
 mv = preprocess.model_view(raw)
 viz.fig_s0_raw(raw, s)
 viz.fig_s0_montage(raw)
+viz.fig_s1_label_audit(audit[audit.cohort == "dev"])
 viz.fig_s2_filtering(raw, mv)
 ep_full = mne.concatenate_epochs(
     [preprocess.epochs_from_raw(preprocess.model_view(data.load_raw(s, r)), r)
      for r in config.IMAGERY_RUNS], verbose="ERROR")
 viz.fig_s3_epoching(mv, ep_full, s)
-
-# ── S1, S4: audit + cleaning stages ───────────────────────────────────────────
-say("S1, S4 …")
-viz.fig_s1_label_audit(audit[audit.cohort == "dev"])
 viz.fig_s4_rejection(im["meta"])
 
 # ── S5: ERD grand average, covariances, embedding ────────────────────────────

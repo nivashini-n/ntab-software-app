@@ -129,9 +129,7 @@ not only added runtime but also decides subjectively which components to remove.
 kept it objective: a band-pass filter, repair of faulty electrodes by interpolation, and
 rejection of transient bursts — all by fixed thresholds. My first threshold rejected 75% of
 epochs (I had calibrated it to single-channel scale instead of the maximum over all 64
-channels). I fixed it based on the amplitude distributions, never on accuracy — and the
-final sensitivity check showed rejection moves results by only ±0.2pp: the band-pass had
-already done the real noise work, which I report rather than hide.
+channels). I fixed it based on the amplitude distributions, never on accuracy.
 
 ## Weakest point
 
