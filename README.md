@@ -28,10 +28,13 @@ symlink it to `data/` (PhysioNet layout `data/Sxxx/SxxxRyy.edf`) or set `MI_DATA
 **Predict on a raw EDF (one line):**
 
 ```bash
-uv run python predict.py data/S042/S042R04.edf
+uv run python predict.py /any/path/to/S042R04.edf
 ```
 
-Prints one line per cued trial — onset, predicted `left`/`right`, confidence. Useful flags:
+No dataset download is needed for prediction — the trained model ships in `models/`, and the
+script takes any EEGMMIDB left/right-fist EDF path directly (the data section above is only
+for reproducing the full analysis). Prints one line per cued trial — onset, predicted
+`left`/`right`, confidence. Useful flags:
 `--score` (compare against the file's own annotations), `--recenter` (unsupervised
 adaptation on this file's trials), `--json out.json`. Accepts any L/R-fist run
 (R03/04/07/08/11/12) from any subject; resamples non-160 Hz files; refuses baseline runs;
