@@ -123,19 +123,28 @@ Every processing stage ships a figure; the fully captioned gallery is
 
 ## One design decision
 
-> [NIVI — write this in your voice. Material: chose band-pass + two-level objective cleaning
-> (repair electrode faults / reject bursts) over ICA; the real alternative was ICA with
-> component labeling; include the miscalibration story — first threshold used the wrong
-> statistic, rejected 75%, diagnosed from amplitude distributions, fixed from artifact
-> statistics only — and the punchline that the sensitivity check showed rejection barely
-> mattered after the band-pass did the real work.]
+In terms of design decisions, I focused on the data processing — shaping the data honestly
+before feeding it into any model. I considered ICA (the real alternative) but realized it
+not only added runtime but also decides subjectively which components to remove. Instead I
+kept it objective: a band-pass filter, repair of faulty electrodes by interpolation, and
+rejection of transient bursts — all by fixed thresholds. My first threshold rejected 75% of
+epochs (I had calibrated it to single-channel scale instead of the maximum over all 64
+channels). I fixed it based on the amplitude distributions, never on accuracy — and the
+final sensitivity check showed rejection moves results by only ±0.2pp: the band-pass had
+already done the real noise work, which I report rather than hide.
 
 ## Weakest point
 
-> [NIVI — your voice. Material: ~45 trials/subject → ±15pp per-subject CIs; the defended
-> claim is population-level; semantic label errors (S038/S089-class) are invisible to
-> structural audits; re-centering is transductive-in-the-unlabeled-sense (uses the test
-> file's own unlabeled trials, as a real calibration recording would).]
+What I trust least is the per-subject resolution: with ~45 imagery trials per person, each
+individual accuracy carries roughly ±15 points of uncertainty, and my own permutation null
+says a single subject needs >62% before the number is individually significant — so every
+claim here is population-level, and per-person rankings would be noise. My conclusion would
+also be wrong if the dataset's documented label defects extend beyond the six subjects I
+excluded: semantic label errors (the S038/S089 kind) are invisible to structural audits, and
+mislabeled training subjects would silently corrupt what the models learn. Finally,
+re-centering uses the test subject's *unlabeled* trials — as a real calibration recording
+would, and disclosed as such — but it does mean the adapted number assumes you can record a
+minute of a new person's EEG before predicting.
 
 ## Something the prompts didn't ask about
 
@@ -156,8 +165,19 @@ anything past ~40 training subjects, ICA as an actual comparison arm, resting-st
 
 ## AI use
 
-> [NIVI — your voice, per the required disclosure: which tools, for what; then one specific
-> choice explained entirely in your own words.]
+I used Claude Code mostly for efficient execution: I made every design decision myself from
+trade-offs I evaluated (each one logged with its alternative in `DECISIONS.md`), and to
+execute the full pipeline within the deadline I found it the fastest way to implement,
+debug, and iterate. I also used it to keep the repo organized and to quickly generate the
+figures and the presentation.
+
+**One choice explained in my own words:** I initially was considering a fine-tuning
+benchmark, but realized nothing here is pretrained and the weights are never influenced by
+the new subject's labels — so "fine-tuning" was the wrong concept. Instead I went with a
+re-centering strategy (similar to batch-effect correction): re-estimate only the tangent
+space's reference point from the new person's unlabeled data, with the classifier frozen.
+It held up on the held-out test set — 61.7% versus 55.7% for the same model without
+adaptation.
 
 ## Layout & reproduction
 
